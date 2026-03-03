@@ -198,20 +198,44 @@ export async function listSchemes(projectPath: string): Promise<string[]> {
 // Resolve SPM dependencies
 // ----------------------------------------------------------
 
+export interface SpmResolveResult {
+  success: boolean;
+  raw_output: string;
+  duration_seconds: number;
+  exit_code: number;
+}
+
 export async function resolvePackageDependencies(
   projectPath: string,
   scheme: string
-): Promise<void> {
+): Promise<SpmResolveResult> {
   const flag = projectFlag(projectPath);
   const cmd = `xcodebuild ${flag} "${projectPath}" -scheme "${scheme}" -resolvePackageDependencies 2>&1`;
 
-  logger.info("Resolving package dependencies...");
+  logger.info("Resolving SPM dependencies...");
+  const startTime = Date.now();
+
+  let rawOutput = "";
+  let exitCode = 0;
 
   try {
-    await execAsync(cmd, { timeout: BUILD_TIMEOUT_MS });
-    logger.info("Package dependencies resolved.");
+    const result = await execAsync(cmd, { timeout: BUILD_TIMEOUT_MS });
+    rawOutput = result.stdout;
+    logger.info("SPM dependencies resolved successfully.");
   } catch (err: unknown) {
-    const execErr = err as { message?: string };
-    logger.warn(`Package resolution warning: ${execErr.message ?? String(err)}`);
+    const execErr = err as { stdout?: string; stderr?: string; code?: number; killed?: boolean };
+    if (execErr.killed) {
+      throw new Error(`xcodebuild -resolvePackageDependencies timed out after ${BUILD_TIMEOUT_MS / 1000}s`);
+    }
+    rawOutput = (execErr.stdout ?? "") + (execErr.stderr ?? "");
+    exitCode = execErr.code ?? 1;
+    logger.warn(`SPM resolution failed (exit code ${exitCode})`);
   }
+
+  return {
+    success: exitCode === 0,
+    raw_output: rawOutput,
+    duration_seconds: (Date.now() - startTime) / 1000,
+    exit_code: exitCode,
+  };
 }

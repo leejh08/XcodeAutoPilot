@@ -13,6 +13,7 @@ import { logger } from "./utils/logger.js";
 // Tool handlers
 import { handleAutopilotBuild, autopilotBuildSchema } from "./tools/autopilot-build.js";
 import { handleAutopilotApplyFixes, autopilotApplyFixesSchema } from "./tools/autopilot-apply-fixes.js";
+import { handleAutopilotResolveSpm, autopilotResolveSpmSchema } from "./tools/autopilot-resolve-spm.js";
 import { handleListSchemes, listSchemesSchema } from "./tools/list-schemes.js";
 import { handleClean, cleanSchema } from "./tools/clean.js";
 import { handleHistory } from "./tools/history.js";
@@ -37,6 +38,14 @@ const TOOLS = [
       "the original line content (for verification), and the replacement. Files are backed up before " +
       "modification and scope-checked against the project path.",
     inputSchema: zodToJsonSchema(autopilotApplyFixesSchema),
+  },
+  {
+    name: "autopilot_resolve_spm",
+    description:
+      "Run xcodebuild -resolvePackageDependencies and return structured SPM errors " +
+      "(version conflicts, clone failures, Swift version mismatches). " +
+      "Use this when a build fails due to missing or unresolvable packages.",
+    inputSchema: zodToJsonSchema(autopilotResolveSpmSchema),
   },
   {
     name: "autopilot_list_schemes",
@@ -134,6 +143,11 @@ export function createServer(): Server {
         case "autopilot_apply_fixes": {
           const parsed = autopilotApplyFixesSchema.parse(args);
           result = await handleAutopilotApplyFixes(parsed);
+          break;
+        }
+        case "autopilot_resolve_spm": {
+          const parsed = autopilotResolveSpmSchema.parse(args);
+          result = await handleAutopilotResolveSpm(parsed);
           break;
         }
         case "autopilot_list_schemes": {
