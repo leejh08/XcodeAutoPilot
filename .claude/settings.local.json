@@ -6,12 +6,18 @@
       "Bash(npm run:*)",
       "Bash(echo:*)",
       "mcp__xcode-autopilot__autopilot_list_schemes",
-      "mcp__xcode-autopilot__autopilot_run",
+      "mcp__xcode-autopilot__autopilot_build",
+      "mcp__xcode-autopilot__autopilot_apply_fixes",
       "Bash(gh issue:*)",
       "Bash(git checkout:*)",
       "Bash(git push:*)",
       "Bash(git:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(gh:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   },
   "enableAllProjectMcpServers": true,
