@@ -18,7 +18,7 @@ import type { FileContext } from "../utils/context-extractor.js";
 // ----------------------------------------------------------
 
 const MODEL =
-  process.env.AUTOPILOT_MODEL ?? "claude-sonnet-4-20250514";
+  process.env.AUTOPILOT_MODEL ?? "claude-sonnet-4-6";
 
 const MAX_TOKENS = 8192;
 
