@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(omc skill:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
