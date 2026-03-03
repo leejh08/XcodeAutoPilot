@@ -1,57 +1,110 @@
 # XcodeAutoPilot
 
-Xcode 프로젝트의 빌드 에러를 자동으로 감지하고 수정하는 MCP 서버입니다.
-외부 MCP 의존 없이 `xcodebuild` CLI를 직접 호출하여 빌드→에러분석→수정→재빌드 루프를 자율적으로 수행합니다.
+An MCP server that automatically detects and fixes Xcode build errors. It wraps the `xcodebuild` CLI directly — no external MCP dependencies — and runs a continuous **build → analyze → fix → rebuild** loop until your project compiles cleanly.
 
-## 아키텍처
+> Think of it as an autopilot for Xcode: it reads your build errors, asks Claude to figure out the minimal fix, applies the changes, and keeps going until the build passes.
+
+## How It Works
 
 ```
-[Claude Code / MCP 클라이언트]
-        ↕ MCP 프로토콜 (stdio)
-[XcodeAutoPilot MCP 서버]
-        ↕ child_process.exec
+[Claude Code / MCP Client]
+        ↕  MCP protocol (stdio)
+[XcodeAutoPilot MCP Server]
+        ↕  child_process.exec
 [xcodebuild CLI]
         ↕
-[Xcode 프로젝트]
+[Your Xcode Project]
 ```
 
-## 요구사항
+1. Runs `xcodebuild` and captures all errors
+2. Reads the relevant source files around each error (±50 lines of context)
+3. Sends errors + context to Claude API and receives minimal fix proposals
+4. Applies fixes one file at a time (bottom-to-top to preserve line numbers)
+5. Repeats until zero errors or the iteration limit is reached
 
-- Node.js >= 18
-- Xcode (xcodebuild CLI 포함)
-- Anthropic API Key
+All file modifications are backed up before changes are applied. If fixing makes things worse, it automatically rolls back.
 
-## 설치
+---
+
+## Requirements
+
+| Requirement | Minimum Version |
+|-------------|-----------------|
+| macOS | 13.0 Ventura |
+| Xcode | 14.0 |
+| Node.js | 18.0 |
+| npm | 8.0 |
+| Anthropic API Key | — |
+
+---
+
+## Installation
+
+### Option 1 — Homebrew + npm (recommended)
 
 ```bash
+# Install Node.js via Homebrew (if not already installed)
+brew install node
+
+# Verify versions
+node --version   # should be >= 18.0
+npm --version    # should be >= 8.0
+
+# Clone and install
+git clone https://github.com/your-username/xcode-autopilot.git
+cd xcode-autopilot
 npm install
 npm run build
 ```
 
-## 환경변수
+### Option 2 — npm only
 
 ```bash
-# 필수
-export ANTHROPIC_API_KEY="sk-ant-..."
-
-# 선택 (기본값 있음)
-export AUTOPILOT_MODEL="claude-sonnet-4-20250514"
-export AUTOPILOT_MAX_ITERATIONS=5
-export AUTOPILOT_BACKUP_DIR=".autofix-backup"
-export AUTOPILOT_CONTEXT_LINES=50
-export AUTOPILOT_FILE_SIZE_LIMIT=1048576
+git clone https://github.com/your-username/xcode-autopilot.git
+cd xcode-autopilot
+npm install
+npm run build
 ```
 
-## Claude Desktop / Claude Code 등록
+### Verify Xcode CLI tools
 
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+```bash
+xcodebuild -version   # should print Xcode 14.0 or later
+```
+
+If not installed:
+```bash
+xcode-select --install
+```
+
+---
+
+## Environment Variables
+
+```bash
+# Required
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Optional (defaults shown)
+export AUTOPILOT_MODEL="claude-sonnet-4-20250514"  # Claude model to use
+export AUTOPILOT_MAX_ITERATIONS=5                   # Default fix iterations
+export AUTOPILOT_BACKUP_DIR=".autofix-backup"       # Backup directory
+export AUTOPILOT_CONTEXT_LINES=50                   # Lines of context around each error
+export AUTOPILOT_FILE_SIZE_LIMIT=1048576            # Skip files larger than 1 MB
+```
+
+---
+
+## Register with Claude Desktop / Claude Code
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "xcode-autopilot": {
       "command": "node",
-      "args": ["/path/to/xcode-autopilot/dist/index.js"],
+      "args": ["/absolute/path/to/xcode-autopilot/dist/index.js"],
       "env": {
         "ANTHROPIC_API_KEY": "sk-ant-..."
       }
@@ -60,56 +113,69 @@ export AUTOPILOT_FILE_SIZE_LIMIT=1048576
 }
 ```
 
-## MCP 도구
+Then restart Claude Desktop.
 
-### `autopilot_run` ⭐ 메인 도구
+---
 
-빌드→에러분석→자동수정→재빌드 루프를 자동 실행합니다.
+## MCP Tools
 
-| 파라미터 | 타입 | 필수 | 설명 |
-|----------|------|------|------|
-| `project_path` | string | ✅ | .xcodeproj 또는 .xcworkspace 절대 경로 |
-| `scheme` | string | ✅ | 빌드 스킴 이름 |
-| `max_iterations` | number | — | 최대 수정 반복 횟수 (기본: 5, 최대: 10) |
-| `configuration` | string | — | Debug / Release (기본: Debug) |
-| `destination` | string | — | 빌드 대상 (자동 탐지) |
-| `fix_warnings` | boolean | — | 워닝도 수정 (기본: false) |
+### `autopilot_run` ⭐ Main tool
+
+Runs the full build → analyze → fix → rebuild loop automatically.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `project_path` | string | ✅ | — | Absolute path to `.xcodeproj` or `.xcworkspace` |
+| `scheme` | string | ✅ | — | Build scheme name |
+| `max_iterations` | number | — | 5 | Max fix iterations (hard limit: 10) |
+| `configuration` | string | — | `Debug` | Build configuration |
+| `destination` | string | — | auto-detected | Build destination |
+| `fix_warnings` | boolean | — | `false` | Also fix warnings |
 
 ### `autopilot_build`
 
-빌드만 실행하고 에러/워닝 목록을 반환합니다 (수정 없음).
+Runs `xcodebuild` and returns a structured list of errors and warnings. No files are modified.
 
 ### `autopilot_analyze`
 
-빌드 에러를 Claude AI로 분석만 합니다 (수정 없음, dry-run).
+Builds the project and asks Claude to analyze the errors and propose fixes — but does **not** apply anything. Useful for a dry-run preview.
 
 ### `autopilot_list_schemes`
 
-프로젝트의 사용 가능한 스킴 목록을 반환합니다.
+Lists all available schemes in the Xcode project.
+
+| Parameter | Type | Required |
+|-----------|------|----------|
+| `project_path` | string | ✅ |
 
 ### `autopilot_clean`
 
-xcodebuild clean을 실행합니다.
+Runs `xcodebuild clean` for the given scheme.
 
 ### `autopilot_history`
 
-현재 세션의 자동 수정 이력을 반환합니다.
+Returns the history of all `autopilot_run` sessions in the current server session.
 
-## 안전장치
+---
 
-| 기능 | 설명 |
-|------|------|
-| 파일 백업 | 수정 전 `.autofix-backup/{timestamp}/`에 자동 백업 |
-| 반복 제한 | 최대 10회 (기본 5회) |
-| 무한루프 감지 | 동일 에러 반복 시 자동 중단 |
-| 에러 증가 감지 | 에러 수 증가 시 롤백 후 중단 |
-| 스코프 제한 | `project_path` 하위 파일만 수정 허용 |
-| 보호 디렉토리 | `Pods/`, `.build/`, `DerivedData/`, `Carthage/`, `.git/` 수정 금지 |
-| 파일 크기 제한 | 1MB 초과 파일 스킵 |
-| xcodebuild 타임아웃 | 5분 초과 시 프로세스 종료 |
-| 동시 실행 방지 | 같은 프로젝트에 autopilot_run 중복 실행 거부 |
+## Safety Features
 
-## 결과 리포트
+| Feature | Description |
+|---------|-------------|
+| **File backup** | Every file is backed up to `.autofix-backup/{timestamp}/` before modification |
+| **Iteration limit** | Max 10 iterations (default 5), hard-capped regardless of input |
+| **Infinite loop detection** | If the same errors repeat in back-to-back iterations, the loop stops immediately |
+| **Error increase detection** | If a fix introduces more errors than it resolves, changes are rolled back and the loop stops |
+| **Content verification** | `original_line` is matched against the actual file before applying each fix — mismatches are skipped |
+| **Scope restriction** | Only files inside `project_path` can be modified |
+| **Protected directories** | `Pods/`, `.build/`, `DerivedData/`, `Carthage/`, `.framework/`, `.git/` are never touched |
+| **File size limit** | Files larger than 1 MB are skipped (likely generated files) |
+| **Build timeout** | `xcodebuild` is killed if it runs longer than 5 minutes |
+| **Concurrency guard** | Only one `autopilot_run` can run per project at a time |
+
+---
+
+## Example Output
 
 ```json
 {
@@ -120,45 +186,80 @@ xcodebuild clean을 실행합니다.
     { "iteration": 2, "errors_before": 5,  "errors_after": 1, "fixes_applied": 4 },
     { "iteration": 3, "errors_before": 1,  "errors_after": 0, "fixes_applied": 1 }
   ],
-  "all_fixes": [...],
+  "all_fixes": [
+    {
+      "file": "Sources/App/ViewModel.swift",
+      "line": 42,
+      "description": "Type mismatch: added explicit Int conversion",
+      "iteration": 1
+    }
+  ],
   "remaining_errors": [],
+  "rollbacks": [],
+  "unfixable": [],
+  "duration_seconds": 45.2,
   "backup_path": ".autofix-backup/20250303-141523/"
 }
 ```
 
-## 테스트
+---
 
-```bash
-npm test
-```
-
-## 사용 예시
+## Usage Examples
 
 ```
-autopilot_list_schemes로 내 프로젝트 스킴 확인해줘
+# List available schemes
+autopilot_list_schemes
   project_path: /Users/me/MyApp/MyApp.xcodeproj
 
-autopilot_run으로 빌드 에러 자동으로 고쳐줘
+# Check build errors without fixing
+autopilot_build
+  project_path: /Users/me/MyApp/MyApp.xcodeproj
+  scheme: MyApp
+
+# Preview what Claude would fix (dry-run)
+autopilot_analyze
+  project_path: /Users/me/MyApp/MyApp.xcodeproj
+  scheme: MyApp
+
+# Run the full auto-fix loop
+autopilot_run
   project_path: /Users/me/MyApp/MyApp.xcodeproj
   scheme: MyApp
   max_iterations: 5
 ```
 
-## 프로젝트 구조
+---
+
+## Development
+
+```bash
+# Run tests
+npm test
+
+# Watch mode
+npm run dev
+
+# Build
+npm run build
+```
+
+---
+
+## Project Structure
 
 ```
 src/
-├── index.ts                   # MCP 서버 진입점
-├── server.ts                  # MCP 서버 설정 + 핸들러 라우팅
-├── types.ts                   # 공통 타입 정의
+├── index.ts                    # MCP server entry point (stdio transport)
+├── server.ts                   # Server factory + tool routing
+├── types.ts                    # Shared TypeScript interfaces
 ├── core/
-│   ├── xcodebuild.ts          # xcodebuild CLI 래핑
-│   ├── error-parser.ts        # 빌드 출력 파싱
-│   ├── claude-fixer.ts        # Claude API 호출
-│   ├── file-patcher.ts        # 파일 수정/백업/롤백
-│   ├── orchestrator.ts        # 빌드-수정 루프
-│   └── safety.ts              # 안전장치
+│   ├── xcodebuild.ts           # xcodebuild CLI wrapper
+│   ├── error-parser.ts         # Build output → BuildDiagnostic[]
+│   ├── claude-fixer.ts         # Claude API calls + response parsing
+│   ├── file-patcher.ts         # File modification, backup, rollback
+│   ├── orchestrator.ts         # Build-fix loop coordination
+│   └── safety.ts               # Guards: loop detection, scope, locks
 └── utils/
-    ├── logger.ts              # stderr 로깅
-    └── context-extractor.ts   # 소스 컨텍스트 추출
+    ├── logger.ts               # stderr-only logger (MCP stdout is reserved)
+    └── context-extractor.ts    # Extract source context around error lines
 ```
