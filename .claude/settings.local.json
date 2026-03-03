@@ -8,7 +8,10 @@
       "mcp__xcode-autopilot__autopilot_list_schemes",
       "mcp__xcode-autopilot__autopilot_run",
       "Bash(gh issue:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(git:*)",
+      "Bash(gh pr:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
