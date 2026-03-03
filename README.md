@@ -158,23 +158,6 @@ Returns the history of all `autopilot_run` sessions in the current server sessio
 
 ---
 
-## Safety Features
-
-| Feature | Description |
-|---------|-------------|
-| **File backup** | Every file is backed up to `.autofix-backup/{timestamp}/` before modification |
-| **Iteration limit** | Max 10 iterations (default 5), hard-capped regardless of input |
-| **Infinite loop detection** | If the same errors repeat in back-to-back iterations, the loop stops immediately |
-| **Error increase detection** | If a fix introduces more errors than it resolves, changes are rolled back and the loop stops |
-| **Content verification** | `original_line` is matched against the actual file before applying each fix — mismatches are skipped |
-| **Scope restriction** | Only files inside `project_path` can be modified |
-| **Protected directories** | `Pods/`, `.build/`, `DerivedData/`, `Carthage/`, `.framework/`, `.git/` are never touched |
-| **File size limit** | Files larger than 1 MB are skipped (likely generated files) |
-| **Build timeout** | `xcodebuild` is killed if it runs longer than 5 minutes |
-| **Concurrency guard** | Only one `autopilot_run` can run per project at a time |
-
----
-
 ## Example Output
 
 ```json
@@ -243,23 +226,3 @@ npm run dev
 npm run build
 ```
 
----
-
-## Project Structure
-
-```
-src/
-├── index.ts                    # MCP server entry point (stdio transport)
-├── server.ts                   # Server factory + tool routing
-├── types.ts                    # Shared TypeScript interfaces
-├── core/
-│   ├── xcodebuild.ts           # xcodebuild CLI wrapper
-│   ├── error-parser.ts         # Build output → BuildDiagnostic[]
-│   ├── claude-fixer.ts         # Claude API calls + response parsing
-│   ├── file-patcher.ts         # File modification, backup, rollback
-│   ├── orchestrator.ts         # Build-fix loop coordination
-│   └── safety.ts               # Guards: loop detection, scope, locks
-└── utils/
-    ├── logger.ts               # stderr-only logger (MCP stdout is reserved)
-    └── context-extractor.ts    # Extract source context around error lines
-```
