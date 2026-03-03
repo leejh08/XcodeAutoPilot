@@ -13,6 +13,7 @@
       "Bash(git push:*)",
       "Bash(git:*)",
       "Bash(gh pr:*)",
+      "Bash(gh api:*)",
       "Bash(gh:*)",
       "Bash(curl:*)",
       "WebSearch",
