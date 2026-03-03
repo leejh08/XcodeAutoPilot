@@ -1,0 +1,8 @@
+CompileSwift normal arm64 /Users/test/MyApp/Sources/ViewModel.swift
+/Users/test/MyApp/Sources/ViewModel.swift:42:10: error: cannot convert value of type 'String' to expected argument type 'Int'
+/Users/test/MyApp/Sources/ViewModel.swift:15:5: warning: variable 'unused' was never used; consider replacing with '_' or removing it
+/Users/test/MyApp/Sources/Controller.swift:88:20: error: value of type 'UIView' has no member 'configure'
+/Users/test/MyApp/Sources/Controller.swift:102:8: error: use of unresolved identifier 'dataSource'
+ld: symbol(s) not found for architecture arm64
+error: no such module 'MissingFramework'
+** BUILD FAILED **
