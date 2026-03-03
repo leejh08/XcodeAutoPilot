@@ -5,3 +5,4 @@ dist/
 *.d.ts.map
 .DS_Store
 .autofix-backup/
+.mcp.json

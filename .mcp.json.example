@@ -2,9 +2,9 @@
   "mcpServers": {
     "xcode-autopilot": {
       "command": "node",
-      "args": ["/Users/leejh/Desktop/XcodeAutoPilot/dist/index.js"],
+      "args": ["/absolute/path/to/XcodeAutoPilot/dist/index.js"],
       "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY",
+        "ANTHROPIC_API_KEY": "sk-ant-...",
         "AUTOPILOT_MODEL": "claude-sonnet-4-6"
       }
     }
