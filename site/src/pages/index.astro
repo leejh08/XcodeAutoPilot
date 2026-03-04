@@ -319,6 +319,27 @@ const keywords = [
       .c-key { color: var(--accent2); }
       .c-str { color: var(--green); }
 
+      /* ── Copy button ── */
+      .code-block { position: relative; }
+      .copy-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 500;
+        padding: 4px 10px;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        line-height: 1;
+      }
+      .copy-btn:hover { background: var(--surface); color: var(--text); }
+      .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
       /* ── Footer ── */
       footer {
         border-top: 1px solid var(--border);
@@ -342,7 +363,7 @@ const keywords = [
     <!-- Nav -->
     <nav>
       <div class="inner">
-        <div class="logo">🛫 XcodeAutoPilot <span>v0.3.0</span></div>
+        <div class="logo">🛫 XcodeAutoPilot <span>v0.3.1</span></div>
         <div class="nav-links">
           <a href="#tools">Tools</a>
           <a href="#xap">XAP</a>
@@ -470,9 +491,33 @@ npm install && npm run build</pre>
     <footer>
       <p>
         <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank">XcodeAutoPilot</a>
-        · v0.3.0 · MIT License
+        · v0.3.1 · MIT License
       </p>
     </footer>
 
+  <script>
+    document.querySelectorAll("pre").forEach((pre) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-block";
+      pre.parentNode.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+
+      const btn = document.createElement("button");
+      btn.className = "copy-btn";
+      btn.textContent = "Copy";
+      wrapper.appendChild(btn);
+
+      btn.addEventListener("click", () => {
+        navigator.clipboard.writeText(pre.innerText).then(() => {
+          btn.textContent = "Copied!";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "Copy";
+            btn.classList.remove("copied");
+          }, 2000);
+        });
+      });
+    });
+  </script>
   </body>
 </html>
