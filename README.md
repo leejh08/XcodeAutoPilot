@@ -80,6 +80,7 @@ Restart Claude Code after saving.
 |------|-------------|
 | `autopilot_build` | Run xcodebuild — returns structured errors with smart context (enclosing scope + related definitions and call sites) |
 | `autopilot_apply_fixes` | Apply fixes safely — line-verified, backed up before patching, auto-rollback if errors increase |
+| `autopilot_screenshot` | Build and run the app in a simulator, capture a screenshot, and return it as an image for AI visual analysis |
 | `autopilot_tuist_build` | Build Tuist projects end-to-end — auto-detects version and runs `install → generate → xcodebuild` |
 | `autopilot_resolve_spm` | Resolve SPM dependencies and return structured errors |
 | `autopilot_cache_clean` | Selectively clear DerivedData, ModuleCache, SPM cache, or Index store |

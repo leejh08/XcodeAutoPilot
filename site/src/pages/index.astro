@@ -12,6 +12,11 @@ const tools = [
     tag: "core",
   },
   {
+    name: "autopilot_screenshot",
+    desc: "Build and run the app in a simulator, capture a screenshot, and return it as an image for AI visual analysis. Saves to .xap/screenshots/ and opens in Preview.",
+    tag: "vision",
+  },
+  {
     name: "autopilot_tuist_build",
     desc: "Build Tuist projects end-to-end. Auto-detects version: v4+ uses tuist install → generate, v3.x uses tuist fetch → generate.",
     tag: "tuist",
@@ -417,7 +422,7 @@ const keywords = [
       <!-- Tools -->
       <section id="tools">
         <div class="section-label">MCP Tools</div>
-        <h2>8 tools, one goal.</h2>
+        <h2>9 tools, one goal.</h2>
         <p class="section-sub">Every tool returns structured JSON — no parsing raw xcodebuild output.</p>
         <div class="tools-grid">
           {tools.map((t) => (
