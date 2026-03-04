@@ -319,9 +319,9 @@ const keywords = [
       .c-key { color: var(--accent2); }
       .c-str { color: var(--green); }
 
-      /* ── Copy button ── */
-      .code-block { position: relative; }
-      .copy-btn {
+      /* ── Copy button (global: JS-created elements don't get Astro scope attr) ── */
+      :global(.code-block) { position: relative; }
+      :global(.copy-btn) {
         position: absolute;
         top: 10px;
         right: 10px;
@@ -335,14 +335,14 @@ const keywords = [
         border-radius: 7px;
         color: var(--muted);
         cursor: pointer;
-        transition: background 0.15s, color 0.15s, border-color 0.15s;
+        transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
         padding: 0;
+        opacity: 0;
       }
-      .copy-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-      .copy-btn { opacity: 0; }
-      .code-block:hover .copy-btn { opacity: 1; }
-      .copy-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); border-color: #2a2a3a; }
-      .copy-btn.copied { opacity: 1; color: var(--green); border-color: var(--green); background: rgba(74,222,128,0.08); }
+      :global(.copy-btn svg) { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      :global(.code-block:hover .copy-btn) { opacity: 1; }
+      :global(.copy-btn:hover) { background: rgba(255,255,255,0.08); color: var(--text); border-color: #2a2a3a; }
+      :global(.copy-btn.copied) { opacity: 1; color: var(--green); border-color: var(--green); background: rgba(74,222,128,0.08); }
 
       /* ── Footer ── */
       footer {
