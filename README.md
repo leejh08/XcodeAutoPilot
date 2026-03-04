@@ -79,22 +79,6 @@ xcode-select --install
 
 ---
 
-## Environment Variables
-
-```bash
-# Required
-export ANTHROPIC_API_KEY="sk-ant-..."
-
-# Optional (defaults shown)
-export AUTOPILOT_MODEL="claude-sonnet-4-20250514"  # Claude model to use
-export AUTOPILOT_MAX_ITERATIONS=5                   # Default fix iterations
-export AUTOPILOT_BACKUP_DIR=".autofix-backup"       # Backup directory
-export AUTOPILOT_CONTEXT_LINES=50                   # Lines of context around each error
-export AUTOPILOT_FILE_SIZE_LIMIT=1048576            # Skip files larger than 1 MB
-```
-
----
-
 ## Register with Claude Desktop / Claude Code
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -185,44 +169,4 @@ Returns the history of all `autopilot_run` sessions in the current server sessio
 }
 ```
 
----
-
-## Usage Examples
-
-```
-# List available schemes
-autopilot_list_schemes
-  project_path: /Users/me/MyApp/MyApp.xcodeproj
-
-# Check build errors without fixing
-autopilot_build
-  project_path: /Users/me/MyApp/MyApp.xcodeproj
-  scheme: MyApp
-
-# Preview what Claude would fix (dry-run)
-autopilot_analyze
-  project_path: /Users/me/MyApp/MyApp.xcodeproj
-  scheme: MyApp
-
-# Run the full auto-fix loop
-autopilot_run
-  project_path: /Users/me/MyApp/MyApp.xcodeproj
-  scheme: MyApp
-  max_iterations: 5
-```
-
----
-
-## Development
-
-```bash
-# Run tests
-npm test
-
-# Watch mode
-npm run dev
-
-# Build
-npm run build
-```
 
