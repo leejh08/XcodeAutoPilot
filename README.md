@@ -1,172 +1,174 @@
 # XcodeAutoPilot
 
-An MCP server that automatically detects and fixes Xcode build errors. It wraps the `xcodebuild` CLI directly — no external MCP dependencies — and runs a continuous **build → analyze → fix → rebuild** loop until your project compiles cleanly.
+An MCP server that gives Claude Code the ability to build, analyze, and fix Xcode errors — autonomously.
 
-> Think of it as an autopilot for Xcode: it reads your build errors, asks Claude to figure out the minimal fix, applies the changes, and keeps going until the build passes.
+Claude Code handles all reasoning. XcodeAutoPilot handles build execution, context extraction, and safe file patching.
+
+---
 
 ## How It Works
 
 ```
-[Claude Code / MCP Client]
-        ↕  MCP protocol (stdio)
-[XcodeAutoPilot MCP Server]
-        ↕  child_process.exec
-[xcodebuild CLI]
-        ↕
-[Your Xcode Project]
+Claude Code
+   ↕  MCP (stdio)
+XcodeAutoPilot
+   ↕  child_process
+xcodebuild / tuist
+   ↕
+Your Xcode Project
 ```
 
-1. Runs `xcodebuild` and captures all errors
-2. Reads the relevant source files around each error (±50 lines of context)
-3. Sends errors + context to Claude API and receives minimal fix proposals
-4. Applies fixes one file at a time (bottom-to-top to preserve line numbers)
-5. Repeats until zero errors or the iteration limit is reached
+1. `autopilot_build` runs `xcodebuild` and returns structured errors with smart source context
+2. Claude Code analyzes the errors — seeing the enclosing function scope, related definitions, and call sites
+3. `autopilot_apply_fixes` applies the fixes with line-level verification and automatic backup
+4. Repeat until 0 errors
 
-All file modifications are backed up before changes are applied. If fixing makes things worse, it automatically rolls back.
+If a fix makes things worse, it automatically rolls back.
 
 ---
 
 ## Requirements
 
-| Requirement | Minimum Version |
-|-------------|-----------------|
+| | Minimum |
+|---|---|
 | macOS | 13.0 Ventura |
 | Xcode | 14.0 |
 | Node.js | 18.0 |
-| npm | 8.0 |
-| Anthropic API Key | — |
+| Claude Code | latest |
 
 ---
 
 ## Installation
 
-### Option 1 — Homebrew + npm (recommended)
-
 ```bash
-# Install Node.js via Homebrew (if not already installed)
-brew install node
-
-# Verify versions
-node --version   # should be >= 18.0
-npm --version    # should be >= 8.0
-
-# Clone and install
-git clone https://github.com/your-username/xcode-autopilot.git
-cd xcode-autopilot
-npm install
-npm run build
+git clone https://github.com/leejh08/XcodeAutoPilot.git
+cd XcodeAutoPilot
+npm install && npm run build
 ```
 
-### Option 2 — npm only
+Verify Xcode CLI tools are installed:
 
 ```bash
-git clone https://github.com/your-username/xcode-autopilot.git
-cd xcode-autopilot
-npm install
-npm run build
-```
-
-### Verify Xcode CLI tools
-
-```bash
-xcodebuild -version   # should print Xcode 14.0 or later
-```
-
-If not installed:
-```bash
-xcode-select --install
+xcodebuild -version
+# If missing: xcode-select --install
 ```
 
 ---
 
-## Register with Claude Desktop / Claude Code
+## Register with Claude Code
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to `.mcp.json` in your project root (or `~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "xcode-autopilot": {
       "command": "node",
-      "args": ["/absolute/path/to/xcode-autopilot/dist/index.js"],
-      "env": {
-        "ANTHROPIC_API_KEY": "sk-ant-..."
-      }
+      "args": ["/absolute/path/to/XcodeAutoPilot/dist/index.js"]
     }
   }
 }
 ```
 
-Then restart Claude Desktop.
+Restart Claude Code after saving.
 
 ---
 
 ## MCP Tools
 
-### `autopilot_run` ⭐ Main tool
+### Build
 
-Runs the full build → analyze → fix → rebuild loop automatically.
+| Tool | Description |
+|------|-------------|
+| `autopilot_build` | Run `xcodebuild` and return structured errors with **smart context**: enclosing function scope + related definitions and call sites across the project |
+| `autopilot_tuist_build` | Build a Tuist project end-to-end. Auto-detects version — v4+ runs `tuist install → generate`, v3.x runs `tuist fetch → generate` — then xcodebuild |
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `project_path` | string | ✅ | — | Absolute path to `.xcodeproj` or `.xcworkspace` |
-| `scheme` | string | ✅ | — | Build scheme name |
-| `max_iterations` | number | — | 5 | Max fix iterations (hard limit: 10) |
-| `configuration` | string | — | `Debug` | Build configuration |
-| `destination` | string | — | auto-detected | Build destination |
-| `fix_warnings` | boolean | — | `false` | Also fix warnings |
+**`autopilot_build` parameters**
 
-### `autopilot_build`
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `project_path` | ✅ | — | Absolute path to `.xcodeproj` or `.xcworkspace` |
+| `scheme` | ✅ | — | Build scheme name |
+| `configuration` | — | `Debug` | `Debug` or `Release` |
+| `destination` | — | auto | Build destination (auto-detected from available simulators) |
+| `include_warnings` | — | `false` | Include warnings in context extraction |
 
-Runs `xcodebuild` and returns a structured list of errors and warnings. No files are modified.
+**`autopilot_tuist_build` parameters**
 
-### `autopilot_analyze`
-
-Builds the project and asks Claude to analyze the errors and propose fixes — but does **not** apply anything. Useful for a dry-run preview.
-
-### `autopilot_list_schemes`
-
-Lists all available schemes in the Xcode project.
-
-| Parameter | Type | Required |
-|-----------|------|----------|
-| `project_path` | string | ✅ |
-
-### `autopilot_clean`
-
-Runs `xcodebuild clean` for the given scheme.
-
-### `autopilot_history`
-
-Returns the history of all `autopilot_run` sessions in the current server session.
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `project_directory` | ✅ | — | Directory containing `Project.swift` or `Tuist/` |
+| `scheme` | ✅ | — | Build scheme name |
+| `configuration` | — | `Debug` | Build configuration |
+| `destination` | — | auto | Build destination |
+| `skip_install` | — | `false` | Skip `tuist install/fetch` |
+| `skip_generate` | — | `false` | Skip `tuist generate` |
+| `workspace_path` | — | — | Required when `skip_generate: true` |
 
 ---
 
-## Example Output
+### Fix
 
-```json
-{
-  "status": "success",
-  "summary": "12 errors → 0 errors in 3 iterations (45.2s)",
-  "iterations": [
-    { "iteration": 1, "errors_before": 12, "errors_after": 5, "fixes_applied": 7 },
-    { "iteration": 2, "errors_before": 5,  "errors_after": 1, "fixes_applied": 4 },
-    { "iteration": 3, "errors_before": 1,  "errors_after": 0, "fixes_applied": 1 }
-  ],
-  "all_fixes": [
-    {
-      "file": "Sources/App/ViewModel.swift",
-      "line": 42,
-      "description": "Type mismatch: added explicit Int conversion",
-      "iteration": 1
-    }
-  ],
-  "remaining_errors": [],
-  "rollbacks": [],
-  "unfixable": [],
-  "duration_seconds": 45.2,
-  "backup_path": ".autofix-backup/20250303-141523/"
-}
+| Tool | Description |
+|------|-------------|
+| `autopilot_apply_fixes` | Apply a list of fixes to source files. Each fix is line-verified before patching. All modified files are backed up. Fixes outside the project scope are rejected. |
+
+**`autopilot_apply_fixes` parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `project_path` | ✅ | Used for scope validation |
+| `fixes` | ✅ | Array of `{ file_path, line_number, original_line, fixed_line, explanation }` |
+
+---
+
+### Dependencies & Cache
+
+| Tool | Description |
+|------|-------------|
+| `autopilot_resolve_spm` | Run `xcodebuild -resolvePackageDependencies` and return structured SPM errors (version conflicts, clone failures, Swift version mismatches) |
+| `autopilot_cache_clean` | Selectively clear Xcode caches that `xcodebuild clean` doesn't cover |
+
+**`autopilot_cache_clean` scope options**
+
+| Scope | Clears |
+|-------|--------|
+| `project` | DerivedData for this project |
+| `module_cache` | `ModuleCache.noindex` |
+| `spm` | SPM fetch cache + `SourcePackages` |
+| `index` | Index store |
+| `all` | All of the above |
+
+---
+
+### Utilities
+
+| Tool | Description |
+|------|-------------|
+| `autopilot_list_schemes` | List all build schemes in the project |
+| `autopilot_clean` | Run `xcodebuild clean` |
+| `autopilot_history` | Return fix session history for the current server session |
+
+---
+
+## XAP Keyword Triggers
+
+Install the XAP hook to trigger workflows with a single word in any prompt:
+
+```bash
+bash scripts/install-xap.sh
+# Restart Claude Code
 ```
 
+| Keyword | Alias | What it does |
+|---------|-------|-------------|
+| `xbuild` | `xap build` | Build → analyze → fix loop (up to 5 iterations) |
+| `xfix` | `xap fix` | Focused error analysis + fix |
+| `xclean` | `xap clean` | Cache clean → verify build |
+| `xspm` | `xap spm` | SPM resolve → cache clean → verify build |
 
+---
+
+## License
+
+MIT
