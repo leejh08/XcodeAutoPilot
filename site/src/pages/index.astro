@@ -1,0 +1,478 @@
+---
+const tools = [
+  {
+    name: "autopilot_build",
+    desc: "Run xcodebuild and return structured errors with ±50 line source context.",
+    tag: "core",
+  },
+  {
+    name: "autopilot_apply_fixes",
+    desc: "Apply fixes safely — line-verified, backed up before patching.",
+    tag: "core",
+  },
+  {
+    name: "autopilot_resolve_spm",
+    desc: "Resolve SPM dependency issues with structured error output.",
+    tag: "spm",
+  },
+  {
+    name: "autopilot_cache_clean",
+    desc: "Selectively clear DerivedData, ModuleCache, SPM cache, or Index store.",
+    tag: "cache",
+  },
+  {
+    name: "autopilot_list_schemes",
+    desc: "List all available Xcode build schemes.",
+    tag: "util",
+  },
+  {
+    name: "autopilot_clean",
+    desc: "Run xcodebuild clean to remove build artifacts.",
+    tag: "util",
+  },
+  {
+    name: "autopilot_history",
+    desc: "Return the fix session history for the current server session.",
+    tag: "util",
+  },
+];
+
+const keywords = [
+  { kw: "xbuild", alias: "xap build", desc: "Build → analyze → fix loop (up to 5 iterations)" },
+  { kw: "xfix",   alias: "xap fix",   desc: "Focused error analysis + fix with deep source context" },
+  { kw: "xclean", alias: "xap clean", desc: "Cache clean → verify build" },
+  { kw: "xspm",   alias: "xap spm",   desc: "SPM resolve → cache clean → verify build" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="XcodeAutoPilot — MCP server for automatic Xcode build error detection, fixing, and cache management." />
+    <title>XcodeAutoPilot</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛫</text></svg>" />
+    <style>
+      :root {
+        --bg:       #0c0c0f;
+        --surface:  #13131a;
+        --border:   #1f1f2e;
+        --text:     #eeeef8;
+        --muted:    #7070a0;
+        --accent:   #60a5fa;
+        --accent2:  #a78bfa;
+        --green:    #4ade80;
+        --code-bg:  #0d1117;
+        --radius:   10px;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      /* ── Layout ── */
+      .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+      /* ── Nav ── */
+      nav {
+        border-bottom: 1px solid var(--border);
+        padding: 18px 0;
+      }
+      nav .inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      .logo {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+      }
+      .logo span { color: var(--muted); font-weight: 400; }
+      .nav-links { display: flex; gap: 24px; font-size: 14px; color: var(--muted); }
+      .nav-links a { color: var(--muted); }
+      .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+      /* ── Hero ── */
+      .hero {
+        padding: 100px 0 80px;
+        text-align: center;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--accent);
+        background: rgba(96, 165, 250, 0.08);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        border-radius: 100px;
+        padding: 4px 14px;
+        margin-bottom: 28px;
+        letter-spacing: 0.4px;
+      }
+      h1 {
+        font-size: clamp(36px, 6vw, 60px);
+        font-weight: 700;
+        letter-spacing: -1.5px;
+        line-height: 1.1;
+        margin-bottom: 20px;
+      }
+      h1 .dim { color: var(--muted); }
+      .hero-sub {
+        font-size: 18px;
+        color: var(--muted);
+        max-width: 520px;
+        margin: 0 auto 40px;
+        line-height: 1.6;
+      }
+      .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 22px;
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .btn:hover { opacity: 0.85; text-decoration: none; }
+      .btn-primary { background: var(--accent); color: #0c0c0f; }
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover { color: var(--text); }
+
+      /* ── Loop diagram ── */
+      .loop {
+        margin: 60px auto 0;
+        max-width: 640px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px 28px;
+        text-align: left;
+      }
+      .loop-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      .loop-steps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        font-family: "SF Mono", "Fira Code", monospace;
+      }
+      .loop-step {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 12px;
+        color: var(--accent);
+      }
+      .loop-arrow { color: var(--muted); font-size: 16px; }
+      .loop-repeat {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      /* ── Sections ── */
+      section { padding: 80px 0; border-top: 1px solid var(--border); }
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.8px;
+        color: var(--accent);
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      h2 {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.6px;
+        margin-bottom: 10px;
+      }
+      .section-sub {
+        color: var(--muted);
+        font-size: 16px;
+        margin-bottom: 44px;
+      }
+
+      /* ── Tools grid ── */
+      .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .tool-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        transition: border-color 0.15s;
+      }
+      .tool-card:hover { border-color: var(--accent); }
+      .tool-name {
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 13px;
+        color: var(--accent);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .tool-tag {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: var(--border);
+        padding: 2px 7px;
+        border-radius: 4px;
+      }
+      .tool-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+      /* ── XAP section ── */
+      .kw-grid { display: grid; gap: 10px; }
+      .kw-row {
+        display: grid;
+        grid-template-columns: 120px 160px 1fr;
+        align-items: center;
+        gap: 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        font-size: 13px;
+      }
+      .kw-trigger {
+        font-family: "SF Mono", "Fira Code", monospace;
+        color: var(--green);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .kw-alias {
+        font-family: "SF Mono", "Fira Code", monospace;
+        color: var(--muted);
+      }
+      .kw-desc { color: var(--muted); }
+
+      /* ── Quick Start ── */
+      .steps { display: grid; gap: 20px; }
+      .step { display: grid; grid-template-columns: 32px 1fr; gap: 16px; align-items: start; }
+      .step-num {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: rgba(96, 165, 250, 0.1);
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 600;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .step-body h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+      .step-body p { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        overflow-x: auto;
+        font-family: "SF Mono", "Fira Code", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text);
+      }
+      .c-comment { color: var(--muted); }
+      .c-key { color: var(--accent2); }
+      .c-str { color: var(--green); }
+
+      /* ── Footer ── */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 40px 0;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      footer a { color: var(--muted); }
+      footer a:hover { color: var(--text); }
+
+      @media (max-width: 600px) {
+        .kw-row { grid-template-columns: 1fr; gap: 6px; }
+        .loop-steps { gap: 6px; }
+        nav .nav-links { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Nav -->
+    <nav>
+      <div class="inner">
+        <div class="logo">🛫 XcodeAutoPilot <span>v0.2.0</span></div>
+        <div class="nav-links">
+          <a href="#tools">Tools</a>
+          <a href="#xap">XAP</a>
+          <a href="#quickstart">Quick Start</a>
+          <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank">GitHub ↗</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="container">
+      <section class="hero" style="border-top: none; padding-top: 100px;">
+        <div class="badge">MCP Server for Claude Code</div>
+        <h1>Xcode errors,<br /><span class="dim">fixed automatically.</span></h1>
+        <p class="hero-sub">
+          XcodeAutoPilot is an MCP server that gives Claude Code the ability to
+          build, analyze, and fix Xcode errors — autonomously.
+        </p>
+        <div class="hero-actions">
+          <a href="#quickstart" class="btn btn-primary">Get Started →</a>
+          <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank" class="btn btn-ghost">
+            View on GitHub
+          </a>
+        </div>
+
+        <div class="loop">
+          <div class="loop-label">Fix Loop</div>
+          <div class="loop-steps">
+            <div class="loop-step">autopilot_build</div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-step">analyze errors</div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-step">autopilot_apply_fixes</div>
+            <div class="loop-arrow">→</div>
+            <div class="loop-step">0 errors ✓</div>
+          </div>
+          <div class="loop-repeat">Repeats up to 5 iterations. Files are backed up before every patch.</div>
+        </div>
+      </section>
+
+      <!-- Tools -->
+      <section id="tools">
+        <div class="section-label">MCP Tools</div>
+        <h2>7 tools, one goal.</h2>
+        <p class="section-sub">Every tool returns structured JSON — no parsing raw xcodebuild output.</p>
+        <div class="tools-grid">
+          {tools.map((t) => (
+            <div class="tool-card">
+              <div class="tool-name">
+                {t.name}
+                <span class="tool-tag">{t.tag}</span>
+              </div>
+              <div class="tool-desc">{t.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- XAP -->
+      <section id="xap">
+        <div class="section-label">XAP Keywords</div>
+        <h2>Just say it.</h2>
+        <p class="section-sub">
+          Type <code style="font-family: monospace; color: var(--green); font-size: 14px;">xbuild</code> or <code style="font-family: monospace; color: var(--green); font-size: 14px;">xap build</code> in any prompt —
+          Claude Code detects the keyword and runs the full workflow automatically.
+        </p>
+        <div class="kw-grid">
+          {keywords.map((k) => (
+            <div class="kw-row">
+              <div class="kw-trigger">{k.kw}</div>
+              <div class="kw-alias">{k.alias}</div>
+              <div class="kw-desc">{k.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Quick Start -->
+      <section id="quickstart">
+        <div class="section-label">Quick Start</div>
+        <h2>Up in 3 steps.</h2>
+        <p class="section-sub">Requires Node.js 18+, Claude Code, and an Xcode project.</p>
+
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h3>Clone & build</h3>
+              <pre>git clone https://github.com/leejh08/XcodeAutoPilot.git
+cd XcodeAutoPilot
+npm install && npm run build</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h3>Register the MCP server</h3>
+              <p>Copy <code>.mcp.json.example</code> to <code>.mcp.json</code> and set your project path:</p>
+              <pre><span class="c-comment">// .mcp.json</span>
+{"{"}
+  <span class="c-key">"mcpServers"</span>: {"{"}
+    <span class="c-key">"xcode-autopilot"</span>: {"{"}
+      <span class="c-key">"command"</span>: <span class="c-str">"node"</span>,
+      <span class="c-key">"args"</span>: [<span class="c-str">"/path/to/XcodeAutoPilot/dist/index.js"</span>]
+    {"}"}
+  {"}"}
+{"}"}</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h3>Install XAP keyword triggers (optional)</h3>
+              <pre>bash scripts/install-xap.sh
+<span class="c-comment"># Restart Claude Code — then type "xbuild" to go.</span></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>
+        <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank">XcodeAutoPilot</a>
+        · v0.2.0 · MIT License
+      </p>
+    </footer>
+
+  </body>
+</html>
