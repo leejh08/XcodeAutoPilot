@@ -18,6 +18,7 @@ import { handleListSchemes, listSchemesSchema } from "./tools/list-schemes.js";
 import { handleClean, cleanSchema } from "./tools/clean.js";
 import { handleHistory } from "./tools/history.js";
 import { handleCacheClean, cacheClearSchema } from "./tools/cache-clean.js";
+import { handleAutopilotTuistBuild, autopilotTuistBuildSchema } from "./tools/tuist-build.js";
 
 // ----------------------------------------------------------
 // Tool definitions (for ListTools response)
@@ -65,6 +66,15 @@ const TOOLS = [
       "Use 'project' to remove DerivedData for this project, 'module_cache' for ModuleCache.noindex, " +
       "'spm' for SPM fetch cache and SourcePackages, 'index' for the Index store, or 'all' for everything.",
     inputSchema: zodToJsonSchema(cacheClearSchema),
+  },
+  {
+    name: "autopilot_tuist_build",
+    description:
+      "Build a Tuist-managed Xcode project. Automatically detects Tuist version and runs the correct " +
+      "commands: v4+ uses 'tuist install' + 'tuist generate', v3.x uses 'tuist fetch' + 'tuist generate'. " +
+      "Then runs xcodebuild and returns structured errors with source context, same format as autopilot_build. " +
+      "Use skip_install or skip_generate to skip steps already completed.",
+    inputSchema: zodToJsonSchema(autopilotTuistBuildSchema),
   },
   {
     name: "autopilot_history",
@@ -127,7 +137,7 @@ function zodFieldToJsonSchema(field: z.ZodTypeAny): Record<string, unknown> {
 
 export function createServer(): Server {
   const server = new Server(
-    { name: "xcode-autopilot", version: "0.2.0" },
+    { name: "xcode-autopilot", version: "0.4.0" },
     { capabilities: { tools: {} } }
   );
 
@@ -172,6 +182,11 @@ export function createServer(): Server {
         case "autopilot_cache_clean": {
           const parsed = cacheClearSchema.parse(args);
           result = await handleCacheClean(parsed);
+          break;
+        }
+        case "autopilot_tuist_build": {
+          const parsed = autopilotTuistBuildSchema.parse(args);
+          result = await handleAutopilotTuistBuild(parsed);
           break;
         }
         case "autopilot_history": {
