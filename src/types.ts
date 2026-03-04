@@ -158,6 +158,18 @@ export interface SessionHistoryEntry {
 }
 
 // ----------------------------------------------------------
+// Context Types
+// ----------------------------------------------------------
+
+export interface RelatedLocation {
+  description: string;   // "function definition" | "call site" | "type definition"
+  file_path: string;
+  snippet: string;       // formatted lines with line numbers
+  start_line: number;
+  end_line: number;
+}
+
+// ----------------------------------------------------------
 // Safety Types
 // ----------------------------------------------------------
 

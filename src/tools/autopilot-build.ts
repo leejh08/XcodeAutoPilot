@@ -4,6 +4,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { dirname } from "path";
 import { runBuild, getDefaultDestination } from "../core/xcodebuild.js";
 import { filterErrors, filterWarnings } from "../core/error-parser.js";
 import { extractContextForDiagnostics } from "../utils/context-extractor.js";
@@ -54,8 +55,9 @@ export async function handleAutopilotBuild(input: AutopilotBuildInput): Promise<
     ? buildResult.diagnostics
     : errors;
 
+  const projectRoot = dirname(input.project_path);
   const contextMap = errors.length > 0
-    ? await extractContextForDiagnostics(diagnosticsForContext)
+    ? await extractContextForDiagnostics(diagnosticsForContext, projectRoot)
     : new Map();
 
   logger.info(`Extracted context for ${contextMap.size} file(s)`);
@@ -67,6 +69,7 @@ export async function handleAutopilotBuild(input: AutopilotBuildInput): Promise<
     source: ctx.context_text,
     start_line: ctx.start_line,
     end_line: ctx.end_line,
+    related_locations: ctx.related_locations,
   }));
 
   return JSON.stringify(
