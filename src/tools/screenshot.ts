@@ -4,7 +4,7 @@
 // ============================================================
 
 import { z } from "zod";
-import { mkdirSync, readFileSync } from "fs";
+import { mkdirSync, readFileSync, readdirSync } from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { dirname, join } from "path";
@@ -15,7 +15,6 @@ import {
   installApp,
   launchApp,
   takeScreenshot,
-  findBuiltApp,
 } from "../core/simulator.js";
 import { logger } from "../utils/logger.js";
 
@@ -72,6 +71,58 @@ export interface ScreenshotResult {
 }
 
 // ----------------------------------------------------------
+// Get BUILT_PRODUCTS_DIR from xcodebuild -showBuildSettings
+// ----------------------------------------------------------
+
+async function getBuiltProductsDir(
+  projectPath: string,
+  scheme: string,
+  configuration: string,
+  destination: string
+): Promise<string> {
+  const flag = projectPath.endsWith(".xcworkspace") ? "-workspace" : "-project";
+  const cmd = [
+    "xcodebuild",
+    flag, `"${projectPath}"`,
+    "-scheme", `"${scheme}"`,
+    "-configuration", configuration,
+    "-destination", `'${destination}'`,
+    "-showBuildSettings",
+    "2>/dev/null",
+  ].join(" ");
+
+  const { stdout } = await execAsync(cmd, { timeout: 30_000 });
+
+  const match = stdout.match(/^\s*BUILT_PRODUCTS_DIR\s*=\s*(.+)$/m);
+  if (!match) {
+    throw new Error("Could not determine BUILT_PRODUCTS_DIR from xcodebuild -showBuildSettings");
+  }
+  return match[1].trim();
+}
+
+// ----------------------------------------------------------
+// Find .app bundle in a products directory
+// ----------------------------------------------------------
+
+function findAppInDir(productsDir: string): string {
+  let entries: string[];
+  try {
+    entries = readdirSync(productsDir);
+  } catch {
+    throw new Error(`Build products directory not found: ${productsDir}`);
+  }
+
+  const apps = entries
+    .filter((e) => e.endsWith(".app"))
+    .map((e) => join(productsDir, e));
+
+  if (apps.length === 0) {
+    throw new Error(`No .app bundle found in: ${productsDir}`);
+  }
+  return apps[0];
+}
+
+// ----------------------------------------------------------
 // Handler
 // ----------------------------------------------------------
 
@@ -84,7 +135,7 @@ export async function handleAutopilotScreenshot(
 
   const projectRoot = dirname(input.project_path);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const derivedDataPath = `/tmp/xap-build-${timestamp}`;
+  const configuration = input.configuration ?? "Debug";
 
   // Prepare screenshots output directory
   const screenshotsDir = join(projectRoot, ".xap", "screenshots");
@@ -96,18 +147,18 @@ export async function handleAutopilotScreenshot(
   const device = await findSimulator(input.device_name, input.os_version);
   logger.info(`Found: ${device.name} (${device.udid})`);
 
+  const destination = `platform=iOS Simulator,name=${device.name}`;
+
   // ── Step 2: Boot simulator ──────────────────────────────
   await bootSimulator(device.udid);
 
   // ── Step 3: Build for simulator ─────────────────────────
   logger.info("Building for simulator...");
-  const destination = `platform=iOS Simulator,id=${device.udid}`;
   const buildResult = await runBuild({
     project_path: input.project_path,
     scheme: input.scheme,
-    configuration: input.configuration,
+    configuration,
     destination,
-    derived_data_path: derivedDataPath,
   });
 
   if (!buildResult.success) {
@@ -121,8 +172,15 @@ export async function handleAutopilotScreenshot(
     );
   }
 
-  // ── Step 4: Find built .app ─────────────────────────────
-  const appPath = findBuiltApp(derivedDataPath, input.configuration ?? "Debug");
+  // ── Step 4: Locate built .app via build settings ─────────
+  logger.info("Locating built .app...");
+  const builtProductsDir = await getBuiltProductsDir(
+    input.project_path,
+    input.scheme,
+    configuration,
+    destination
+  );
+  const appPath = findAppInDir(builtProductsDir);
   logger.info(`App: ${appPath}`);
 
   // ── Step 5: Install app ─────────────────────────────────
@@ -137,7 +195,7 @@ export async function handleAutopilotScreenshot(
   await new Promise((r) => setTimeout(r, waitMs));
 
   // ── Step 8: Take screenshot ─────────────────────────────
-  await takeScreenshot(device.udid, screenshotPath);
+  await takeScreenshot(device.name, screenshotPath);
 
   // ── Step 9: Open in Preview (non-blocking) ───────────────
   if (input.open_preview !== false) {

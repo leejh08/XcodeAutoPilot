@@ -4,7 +4,6 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { readdirSync } from "fs";
 import { logger } from "../utils/logger.js";
 
 const execAsync = promisify(exec);
@@ -81,15 +80,20 @@ export async function findSimulator(
 // ----------------------------------------------------------
 
 export async function bootSimulator(udid: string): Promise<void> {
+  // Open Simulator.app first — required for screen surface rendering (screenshot)
+  execAsync("open -a Simulator").catch(() => {});
+
   try {
     await execAsync(`xcrun simctl boot "${udid}"`, { timeout: 60_000 });
     logger.info(`Booted simulator: ${udid}`);
-    // Brief wait for Springboard to settle
-    await new Promise((r) => setTimeout(r, 2_000));
+    // Wait for Springboard to settle and screen surfaces to become available
+    await new Promise((r) => setTimeout(r, 4_000));
   } catch (err) {
     const msg = String(err);
     if (msg.includes("current state: Booted") || msg.includes("already booted")) {
       logger.info(`Simulator already booted: ${udid}`);
+      // Brief wait in case Simulator.app was just opened
+      await new Promise((r) => setTimeout(r, 2_000));
     } else {
       throw err;
     }
@@ -126,38 +130,59 @@ export async function launchApp(udid: string, bundleId: string): Promise<void> {
 // Take screenshot
 // ----------------------------------------------------------
 
-export async function takeScreenshot(udid: string, outputPath: string): Promise<void> {
-  await execAsync(`xcrun simctl io "${udid}" screenshot "${outputPath}"`, { timeout: 30_000 });
-  logger.info(`Screenshot saved: ${outputPath}`);
+const FIND_WINDOW_SWIFT = `
+import Cocoa
+let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as! [[String: Any]]
+for w in windows {
+    let owner = w["kCGWindowOwnerName"] as? String ?? ""
+    let name = w["kCGWindowName"] as? String ?? ""
+    let wid = w["kCGWindowNumber"] as? Int ?? 0
+    if owner == "Simulator" && !name.isEmpty {
+        print(wid)
+        exit(0)
+    }
 }
+exit(1)
+`;
 
-// ----------------------------------------------------------
-// Find built .app bundle in DerivedData
-// ----------------------------------------------------------
-
-export function findBuiltApp(
-  derivedDataPath: string,
-  configuration: string
-): string {
-  const productsDir = `${derivedDataPath}/Build/Products/${configuration}-iphonesimulator`;
-
-  let entries: string[];
+export async function takeScreenshot(deviceName: string, outputPath: string): Promise<void> {
+  // First try simctl io screenshot (works on non-beta iOS)
   try {
-    entries = readdirSync(productsDir);
+    // Find the booted simulator UDID by name for simctl
+    const { stdout: simctlOut } = await execAsync(
+      "xcrun simctl list devices booted --json",
+      { timeout: 10_000 }
+    );
+    const data = JSON.parse(simctlOut) as { devices: Record<string, SimDevice[]> };
+    let udid = "";
+    for (const devices of Object.values(data.devices)) {
+      const match = devices.find((d) => d.name === deviceName);
+      if (match) { udid = match.udid; break; }
+    }
+    if (udid) {
+      await execAsync(`xcrun simctl io "${udid}" screenshot "${outputPath}"`, { timeout: 15_000 });
+      logger.info(`Screenshot saved via simctl: ${outputPath}`);
+      return;
+    }
   } catch {
+    logger.warn("simctl io screenshot failed, falling back to window capture");
+  }
+
+  // Fallback: find Simulator window via CGWindowList and screencapture
+  const swiftCode = FIND_WINDOW_SWIFT.trim();
+  const { stdout: widOut } = await execAsync(
+    `echo '${swiftCode.replace(/'/g, "'\\''")}' | swift -`,
+    { timeout: 20_000, shell: "/bin/zsh" }
+  ).catch(() => ({ stdout: "" }));
+
+  const wid = parseInt(widOut.trim(), 10);
+  if (!wid || isNaN(wid)) {
     throw new Error(
-      `Build products directory not found: ${productsDir}. ` +
-      `Ensure the build succeeded and configuration matches (e.g. "Debug").`
+      "Could not find Simulator window. Ensure Simulator.app is open and the device window is visible."
     );
   }
 
-  const apps = entries
-    .filter((e) => e.endsWith(".app"))
-    .map((e) => `${productsDir}/${e}`);
-
-  if (apps.length === 0) {
-    throw new Error(`No .app bundle found in: ${productsDir}`);
-  }
-
-  return apps[0];
+  await execAsync(`screencapture -l ${wid} -x "${outputPath}"`, { timeout: 15_000 });
+  logger.info(`Screenshot saved via screencapture (wid=${wid}): ${outputPath}`);
 }
+
