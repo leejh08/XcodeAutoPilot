@@ -339,8 +339,10 @@ const keywords = [
         padding: 0;
       }
       .copy-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-      .copy-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); border-color: #333; }
-      .copy-btn.copied { color: var(--green); border-color: var(--green); background: rgba(74,222,128,0.08); }
+      .copy-btn { opacity: 0; }
+      .code-block:hover .copy-btn { opacity: 1; }
+      .copy-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); border-color: #2a2a3a; }
+      .copy-btn.copied { opacity: 1; color: var(--green); border-color: var(--green); background: rgba(74,222,128,0.08); }
 
       /* ── Footer ── */
       footer {
