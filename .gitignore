@@ -7,3 +7,5 @@ dist/
 .autofix-backup/
 .mcp.json
 .claude/settings.local.json
+site/node_modules/
+site/dist/
