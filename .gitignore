@@ -9,3 +9,4 @@ dist/
 .claude/settings.local.json
 site/node_modules/
 site/dist/
+linkedin-post.md
