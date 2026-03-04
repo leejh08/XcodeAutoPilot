@@ -76,78 +76,16 @@ Restart Claude Code after saving.
 
 ## MCP Tools
 
-### Build
-
 | Tool | Description |
 |------|-------------|
-| `autopilot_build` | Run `xcodebuild` and return structured errors with **smart context**: enclosing function scope + related definitions and call sites across the project |
-| `autopilot_tuist_build` | Build a Tuist project end-to-end. Auto-detects version — v4+ runs `tuist install → generate`, v3.x runs `tuist fetch → generate` — then xcodebuild |
-
-**`autopilot_build` parameters**
-
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `project_path` | ✅ | — | Absolute path to `.xcodeproj` or `.xcworkspace` |
-| `scheme` | ✅ | — | Build scheme name |
-| `configuration` | — | `Debug` | `Debug` or `Release` |
-| `destination` | — | auto | Build destination (auto-detected from available simulators) |
-| `include_warnings` | — | `false` | Include warnings in context extraction |
-
-**`autopilot_tuist_build` parameters**
-
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `project_directory` | ✅ | — | Directory containing `Project.swift` or `Tuist/` |
-| `scheme` | ✅ | — | Build scheme name |
-| `configuration` | — | `Debug` | Build configuration |
-| `destination` | — | auto | Build destination |
-| `skip_install` | — | `false` | Skip `tuist install/fetch` |
-| `skip_generate` | — | `false` | Skip `tuist generate` |
-| `workspace_path` | — | — | Required when `skip_generate: true` |
-
----
-
-### Fix
-
-| Tool | Description |
-|------|-------------|
-| `autopilot_apply_fixes` | Apply a list of fixes to source files. Each fix is line-verified before patching. All modified files are backed up. Fixes outside the project scope are rejected. |
-
-**`autopilot_apply_fixes` parameters**
-
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `project_path` | ✅ | Used for scope validation |
-| `fixes` | ✅ | Array of `{ file_path, line_number, original_line, fixed_line, explanation }` |
-
----
-
-### Dependencies & Cache
-
-| Tool | Description |
-|------|-------------|
-| `autopilot_resolve_spm` | Run `xcodebuild -resolvePackageDependencies` and return structured SPM errors (version conflicts, clone failures, Swift version mismatches) |
-| `autopilot_cache_clean` | Selectively clear Xcode caches that `xcodebuild clean` doesn't cover |
-
-**`autopilot_cache_clean` scope options**
-
-| Scope | Clears |
-|-------|--------|
-| `project` | DerivedData for this project |
-| `module_cache` | `ModuleCache.noindex` |
-| `spm` | SPM fetch cache + `SourcePackages` |
-| `index` | Index store |
-| `all` | All of the above |
-
----
-
-### Utilities
-
-| Tool | Description |
-|------|-------------|
-| `autopilot_list_schemes` | List all build schemes in the project |
+| `autopilot_build` | Run xcodebuild — returns structured errors with smart context (enclosing scope + related definitions and call sites) |
+| `autopilot_apply_fixes` | Apply fixes safely — line-verified, backed up before patching, auto-rollback if errors increase |
+| `autopilot_tuist_build` | Build Tuist projects end-to-end — auto-detects version and runs `install → generate → xcodebuild` |
+| `autopilot_resolve_spm` | Resolve SPM dependencies and return structured errors |
+| `autopilot_cache_clean` | Selectively clear DerivedData, ModuleCache, SPM cache, or Index store |
+| `autopilot_list_schemes` | List all available build schemes |
 | `autopilot_clean` | Run `xcodebuild clean` |
-| `autopilot_history` | Return fix session history for the current server session |
+| `autopilot_history` | Return fix session history |
 
 ---
 
