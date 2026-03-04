@@ -19,6 +19,7 @@ import { handleClean, cleanSchema } from "./tools/clean.js";
 import { handleHistory } from "./tools/history.js";
 import { handleCacheClean, cacheClearSchema } from "./tools/cache-clean.js";
 import { handleAutopilotTuistBuild, autopilotTuistBuildSchema } from "./tools/tuist-build.js";
+import { handleAutopilotScreenshot, autopilotScreenshotSchema } from "./tools/screenshot.js";
 
 // ----------------------------------------------------------
 // Tool definitions (for ListTools response)
@@ -75,6 +76,14 @@ const TOOLS = [
       "Then runs xcodebuild and returns structured errors with source context, same format as autopilot_build. " +
       "Use skip_install or skip_generate to skip steps already completed.",
     inputSchema: zodToJsonSchema(autopilotTuistBuildSchema),
+  },
+  {
+    name: "autopilot_screenshot",
+    description:
+      "Build the app, run it in an iOS simulator, and capture a screenshot. " +
+      "Returns the screenshot as an image so Claude can visually inspect the UI. " +
+      "Also saves the PNG to <project>/.xap/screenshots/ and opens it in macOS Preview.",
+    inputSchema: zodToJsonSchema(autopilotScreenshotSchema),
   },
   {
     name: "autopilot_history",
@@ -152,6 +161,8 @@ export function createServer(): Server {
 
     try {
       let result: string;
+      let imageBase64: string | undefined;
+      let imageMimeType: string | undefined;
 
       switch (name) {
         case "autopilot_build": {
@@ -189,6 +200,14 @@ export function createServer(): Server {
           result = await handleAutopilotTuistBuild(parsed);
           break;
         }
+        case "autopilot_screenshot": {
+          const parsed = autopilotScreenshotSchema.parse(args);
+          const screenshotResult = await handleAutopilotScreenshot(parsed);
+          result = screenshotResult.text;
+          imageBase64 = screenshotResult.imageBase64;
+          imageMimeType = screenshotResult.mimeType;
+          break;
+        }
         case "autopilot_history": {
           result = await handleHistory();
           break;
@@ -197,7 +216,13 @@ export function createServer(): Server {
           throw new Error(`Unknown tool: ${name}`);
       }
 
-      return { content: [{ type: "text", text: result }] };
+      const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [
+        { type: "text", text: result },
+      ];
+      if (imageBase64 && imageMimeType) {
+        content.push({ type: "image", data: imageBase64, mimeType: imageMimeType });
+      }
+      return { content };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error(`Tool error (${name}): ${message}`);
