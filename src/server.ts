@@ -137,7 +137,7 @@ function zodFieldToJsonSchema(field: z.ZodTypeAny): Record<string, unknown> {
 
 export function createServer(): Server {
   const server = new Server(
-    { name: "xcode-autopilot", version: "0.2.0" },
+    { name: "xcode-autopilot", version: "0.4.0" },
     { capabilities: { tools: {} } }
   );
 
