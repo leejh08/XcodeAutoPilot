@@ -1,6 +1,6 @@
 {
   "name": "xcode-autopilot",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MCP server for automatic Xcode build error detection and fixing",
   "type": "module",
   "main": "dist/index.js",
