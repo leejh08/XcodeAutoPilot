@@ -17,6 +17,7 @@ import { handleAutopilotResolveSpm, autopilotResolveSpmSchema } from "./tools/au
 import { handleListSchemes, listSchemesSchema } from "./tools/list-schemes.js";
 import { handleClean, cleanSchema } from "./tools/clean.js";
 import { handleHistory } from "./tools/history.js";
+import { handleCacheClean, cacheClearSchema } from "./tools/cache-clean.js";
 
 // ----------------------------------------------------------
 // Tool definitions (for ListTools response)
@@ -56,6 +57,14 @@ const TOOLS = [
     name: "autopilot_clean",
     description: "Run xcodebuild clean to remove derived data for the project.",
     inputSchema: zodToJsonSchema(cleanSchema),
+  },
+  {
+    name: "autopilot_cache_clean",
+    description:
+      "Selectively clear Xcode caches that xcodebuild clean does not cover. " +
+      "Use 'project' to remove DerivedData for this project, 'module_cache' for ModuleCache.noindex, " +
+      "'spm' for SPM fetch cache and SourcePackages, 'index' for the Index store, or 'all' for everything.",
+    inputSchema: zodToJsonSchema(cacheClearSchema),
   },
   {
     name: "autopilot_history",
@@ -158,6 +167,11 @@ export function createServer(): Server {
         case "autopilot_clean": {
           const parsed = cleanSchema.parse(args);
           result = await handleClean(parsed);
+          break;
+        }
+        case "autopilot_cache_clean": {
+          const parsed = cacheClearSchema.parse(args);
+          result = await handleCacheClean(parsed);
           break;
         }
         case "autopilot_history": {
