@@ -3,7 +3,7 @@
 // Prevents infinite loops, scope violations, and unsafe patches
 // ============================================================
 
-import { resolve, relative, isAbsolute } from "path";
+import { resolve, relative, isAbsolute, dirname } from "path";
 import { logger } from "../utils/logger.js";
 import type { BuildDiagnostic, Fix, SafetyCheckResult, LoopDetectionState } from "../types.js";
 import { diagnosticsSignature } from "./error-parser.js";
@@ -126,7 +126,11 @@ export function isWithinProjectScope(
   }
 
   const resolvedFile = resolve(filePath);
-  const resolvedProject = resolve(projectPath);
+  // project_path may be a .xcodeproj/.xcworkspace file — use its parent directory as scope root
+  const resolvedProjectPath = resolve(projectPath);
+  const resolvedProject = resolvedProjectPath.endsWith(".xcodeproj") || resolvedProjectPath.endsWith(".xcworkspace")
+    ? dirname(resolvedProjectPath)
+    : resolvedProjectPath;
 
   const rel = relative(resolvedProject, resolvedFile);
 

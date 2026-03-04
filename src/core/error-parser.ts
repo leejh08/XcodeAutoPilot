@@ -27,6 +27,98 @@ const GENERIC_ERROR_REGEX = /^(error|warning):\s+(.+)$/;
 const BUILD_FAILED_REGEX = /^\*\* BUILD FAILED \*\*$/;
 
 // ----------------------------------------------------------
+// SPM-specific patterns
+// ----------------------------------------------------------
+
+// "error: Dependencies could not be resolved because no versions of 'Pkg' match ..."
+const SPM_VERSION_CONFLICT_REGEX =
+  /error:\s+Dependencies could not be resolved because no versions? of '(.+?)' match/i;
+
+// "error: 'Pkg' {ver} is required, but only versions {list} are available"
+const SPM_VERSION_REQUIRED_REGEX =
+  /error:\s+'(.+?)'\s+.+?\s+is required,\s+but only versions?\s+(.+?)\s+(?:is|are) available/i;
+
+// "error: failed to clone {url}: ..."
+const SPM_CLONE_FAILED_REGEX =
+  /error:\s+failed to clone\s+'?(.+?)'?:\s+(.+)$/i;
+
+// "error: package at '...' requires Swift X.X or later"
+const SPM_SWIFT_VERSION_REGEX =
+  /error:\s+package at '(.+?)'.+requires Swift (.+?) or later/i;
+
+// "xcodebuild: error: Could not resolve package dependencies"
+const SPM_COULD_NOT_RESOLVE_REGEX =
+  /error:\s+Could not resolve package dependencies/i;
+
+export interface SpmDiagnostic {
+  type: "version_conflict" | "version_required" | "clone_failed" | "swift_version" | "unresolvable" | "generic";
+  package?: string;
+  message: string;
+  raw_output: string;
+}
+
+export function parseSpmOutput(output: string): SpmDiagnostic[] {
+  const lines = output.split("\n");
+  const diagnostics: SpmDiagnostic[] = [];
+  const seen = new Set<string>();
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const versionConflict = trimmed.match(SPM_VERSION_CONFLICT_REGEX);
+    if (versionConflict) {
+      const key = `version_conflict:${versionConflict[1]}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        diagnostics.push({ type: "version_conflict", package: versionConflict[1], message: trimmed.replace(/^.*?error:\s+/, ""), raw_output: line });
+      }
+      continue;
+    }
+
+    const versionRequired = trimmed.match(SPM_VERSION_REQUIRED_REGEX);
+    if (versionRequired) {
+      const key = `version_required:${versionRequired[1]}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        diagnostics.push({ type: "version_required", package: versionRequired[1], message: trimmed.replace(/^.*?error:\s+/, ""), raw_output: line });
+      }
+      continue;
+    }
+
+    const cloneFailed = trimmed.match(SPM_CLONE_FAILED_REGEX);
+    if (cloneFailed) {
+      const key = `clone_failed:${cloneFailed[1]}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        diagnostics.push({ type: "clone_failed", package: cloneFailed[1], message: `Failed to clone '${cloneFailed[1]}': ${cloneFailed[2]}`, raw_output: line });
+      }
+      continue;
+    }
+
+    const swiftVersion = trimmed.match(SPM_SWIFT_VERSION_REGEX);
+    if (swiftVersion) {
+      const key = `swift_version:${swiftVersion[1]}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        diagnostics.push({ type: "swift_version", package: swiftVersion[1], message: `Package requires Swift ${swiftVersion[2]} or later`, raw_output: line });
+      }
+      continue;
+    }
+
+    if (SPM_COULD_NOT_RESOLVE_REGEX.test(trimmed)) {
+      const key = "unresolvable";
+      if (!seen.has(key)) {
+        seen.add(key);
+        diagnostics.push({ type: "unresolvable", message: "Could not resolve package dependencies", raw_output: line });
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
+// ----------------------------------------------------------
 // Parser
 // ----------------------------------------------------------
 
