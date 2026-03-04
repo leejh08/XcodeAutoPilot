@@ -3,13 +3,18 @@
 const tools = [
   {
     name: "autopilot_build",
-    desc: "Run xcodebuild and return structured errors with ±50 line source context.",
+    desc: "Run xcodebuild and return structured errors with smart context: enclosing scope + related definitions and call sites.",
     tag: "core",
   },
   {
     name: "autopilot_apply_fixes",
     desc: "Apply fixes safely — line-verified, backed up before patching.",
     tag: "core",
+  },
+  {
+    name: "autopilot_tuist_build",
+    desc: "Build Tuist projects end-to-end. Auto-detects version: v4+ uses tuist install → generate, v3.x uses tuist fetch → generate.",
+    tag: "tuist",
   },
   {
     name: "autopilot_resolve_spm",
@@ -368,7 +373,7 @@ const keywords = [
     <!-- Nav -->
     <nav>
       <div class="inner">
-        <div class="logo">🛫 XcodeAutoPilot <span>v0.3.1</span></div>
+        <div class="logo">🛫 XcodeAutoPilot <span>v0.4.0</span></div>
         <div class="nav-links">
           <a href="#tools">Tools</a>
           <a href="#xap">XAP</a>
@@ -412,7 +417,7 @@ const keywords = [
       <!-- Tools -->
       <section id="tools">
         <div class="section-label">MCP Tools</div>
-        <h2>7 tools, one goal.</h2>
+        <h2>8 tools, one goal.</h2>
         <p class="section-sub">Every tool returns structured JSON — no parsing raw xcodebuild output.</p>
         <div class="tools-grid">
           {tools.map((t) => (
@@ -496,7 +501,7 @@ npm install && npm run build</pre>
     <footer>
       <p>
         <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank">XcodeAutoPilot</a>
-        · v0.3.1 · MIT License
+        · v0.4.0 · MIT License
       </p>
     </footer>
 
