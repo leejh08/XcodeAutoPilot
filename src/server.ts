@@ -20,6 +20,7 @@ import { handleHistory } from "./tools/history.js";
 import { handleCacheClean, cacheClearSchema } from "./tools/cache-clean.js";
 import { handleAutopilotTuistBuild, autopilotTuistBuildSchema } from "./tools/tuist-build.js";
 import { handleAutopilotScreenshot, autopilotScreenshotSchema } from "./tools/screenshot.js";
+import { handleAutopilotTest, autopilotTestSchema } from "./tools/test.js";
 
 // ----------------------------------------------------------
 // Tool definitions (for ListTools response)
@@ -76,6 +77,14 @@ const TOOLS = [
       "Then runs xcodebuild and returns structured errors with source context, same format as autopilot_build. " +
       "Use skip_install or skip_generate to skip steps already completed.",
     inputSchema: zodToJsonSchema(autopilotTuistBuildSchema),
+  },
+  {
+    name: "autopilot_test",
+    description:
+      "Run xcodebuild test and return structured test failures with source context. " +
+      "Each failure includes the failing test method source and the related implementation code. " +
+      "Use this to detect failing tests, then call autopilot_apply_fixes to fix them, and repeat.",
+    inputSchema: zodToJsonSchema(autopilotTestSchema),
   },
   {
     name: "autopilot_screenshot",
@@ -198,6 +207,11 @@ export function createServer(): Server {
         case "autopilot_tuist_build": {
           const parsed = autopilotTuistBuildSchema.parse(args);
           result = await handleAutopilotTuistBuild(parsed);
+          break;
+        }
+        case "autopilot_test": {
+          const parsed = autopilotTestSchema.parse(args);
+          result = await handleAutopilotTest(parsed);
           break;
         }
         case "autopilot_screenshot": {
