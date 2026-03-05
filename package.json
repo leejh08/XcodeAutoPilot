@@ -1,9 +1,16 @@
 {
   "name": "xcode-autopilot",
   "version": "0.4.0",
-  "description": "MCP server for automatic Xcode build error detection and fixing",
+  "description": "MCP server that gives AI the ability to build, test, and fix Xcode errors autonomously",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "xcode-autopilot": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
@@ -12,8 +19,24 @@
     "test:run": "vitest run",
     "clean": "rm -rf dist"
   },
+  "keywords": [
+    "mcp",
+    "xcode",
+    "ios",
+    "swift",
+    "claude",
+    "autopilot",
+    "build",
+    "fix"
+  ],
+  "author": "leejh08",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leejh08/XcodeAutoPilot.git"
+  },
+  "homepage": "https://leejh08.github.io/XcodeAutoPilot/",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.36.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.23.8"
   },
