@@ -40,6 +40,15 @@ If a fix makes things worse, it automatically rolls back.
 
 ## Installation
 
+### Option 1 — Homebrew (recommended)
+
+```bash
+brew tap leejh08/xcode-autopilot
+brew install xcode-autopilot
+```
+
+### Option 2 — Clone
+
 ```bash
 git clone https://github.com/leejh08/XcodeAutoPilot.git
 cd XcodeAutoPilot
@@ -59,6 +68,18 @@ xcodebuild -version
 
 Add to `.mcp.json` in your project root (or `~/Library/Application Support/Claude/claude_desktop_config.json`):
 
+**Homebrew install:**
+```json
+{
+  "mcpServers": {
+    "xcode-autopilot": {
+      "command": "xcode-autopilot"
+    }
+  }
+}
+```
+
+**Clone install:**
 ```json
 {
   "mcpServers": {
