@@ -32,6 +32,11 @@ const PATTERNS = [
     regex: /\b(xspm|xap[\s-]spm)\b/i,
     priority: 4,
   },
+  {
+    key: "xap-shot",
+    regex: /\b(xshot|xap[\s-]shot)\b/i,
+    priority: 5,
+  },
 ];
 
 // ----------------------------------------------------------
@@ -104,6 +109,23 @@ You MUST immediately execute the xap-spm workflow using the MCP tools:
 6. Report SPM resolution result, any packages that changed, and final build status.
 
 Do not ask for permission between steps. Execute the full workflow autonomously.
+`.trim(),
+
+  "xap-shot": `
+[XAP KEYWORD DETECTED: XSHOT]
+
+You MUST immediately execute the xap-shot workflow using the MCP tools:
+
+1. If project_path, scheme, or bundle_id are not clear from context, ask the user before proceeding.
+2. Call \`autopilot_screenshot\` with the project details to:
+   - Build the app for the simulator
+   - Boot the simulator and launch the app
+   - Capture a screenshot and return it as an image
+3. Visually analyze the screenshot — describe what you see in the UI.
+4. If the user asked you to verify a specific UI change, confirm whether it looks correct.
+5. If there are visual issues, describe them clearly and suggest fixes.
+
+Do not ask for permission between steps. Execute autonomously.
 `.trim(),
 };
 
