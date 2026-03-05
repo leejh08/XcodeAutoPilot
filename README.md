@@ -105,6 +105,7 @@ bash scripts/install-xap.sh
 | `xfix` | `xap fix` | Focused error analysis + fix |
 | `xclean` | `xap clean` | Cache clean → verify build |
 | `xspm` | `xap spm` | SPM resolve → cache clean → verify build |
+| `xshot` | `xap shot` | Build → launch in simulator → screenshot → AI visual verification |
 
 ---
 
