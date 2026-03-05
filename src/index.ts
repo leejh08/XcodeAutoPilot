@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // ============================================================
 // XcodeAutoPilot — MCP Server Entry Point
 // ============================================================
@@ -8,11 +9,6 @@ import { logger } from "./utils/logger.js";
 
 async function main(): Promise<void> {
   logger.section("XcodeAutoPilot MCP Server starting...");
-
-  // Validate required env vars
-  if (!process.env.ANTHROPIC_API_KEY) {
-    logger.error("ANTHROPIC_API_KEY is not set. Claude API calls will fail.");
-  }
 
   const server = createServer();
   const transport = new StdioServerTransport();
