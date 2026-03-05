@@ -37,6 +37,11 @@ const PATTERNS = [
     regex: /\b(xshot|xap[\s-]shot)\b/i,
     priority: 5,
   },
+  {
+    key: "xap-test",
+    regex: /\b(xtest|xap[\s-]test)\b/i,
+    priority: 6,
+  },
 ];
 
 // ----------------------------------------------------------
@@ -109,6 +114,25 @@ You MUST immediately execute the xap-spm workflow using the MCP tools:
 6. Report SPM resolution result, any packages that changed, and final build status.
 
 Do not ask for permission between steps. Execute the full workflow autonomously.
+`.trim(),
+
+  "xap-test": `
+[XAP KEYWORD DETECTED: XTEST]
+
+You MUST immediately execute the xap-test workflow using the MCP tools:
+
+1. If project_path, scheme, or destination are not clear from context, ask the user before proceeding.
+2. Call \`autopilot_test\` to run the test suite and get structured failures with source context.
+3. If all tests pass — report success and stop.
+4. For each failing test:
+   a. Analyze the failure message and the test source context provided.
+   b. Examine related_locations to find the implementation being tested.
+   c. Determine whether to fix the implementation or the test expectation.
+5. Call \`autopilot_apply_fixes\` with fixes for all failing tests.
+6. Call \`autopilot_test\` again to verify — repeat if failures remain (max 5 iterations).
+7. Report a summary: how many tests fixed, which files changed, any unfixable failures.
+
+Do not ask for permission between steps. Execute the full loop autonomously.
 `.trim(),
 
   "xap-shot": `

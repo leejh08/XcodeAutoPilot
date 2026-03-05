@@ -12,6 +12,11 @@ const tools = [
     tag: "core",
   },
   {
+    name: "autopilot_test",
+    desc: "Run tests and return structured failures with source context — failing test method + related implementation code.",
+    tag: "test",
+  },
+  {
     name: "autopilot_screenshot",
     desc: "Build and run the app in a simulator, capture a screenshot, and return it as an image for AI visual analysis. Saves to .xap/screenshots/ and opens in Preview.",
     tag: "vision",
@@ -54,6 +59,7 @@ const keywords = [
   { kw: "xclean", alias: "xap clean", desc: "Cache clean → verify build" },
   { kw: "xspm",   alias: "xap spm",   desc: "SPM resolve → cache clean → verify build" },
   { kw: "xshot",  alias: "xap shot",  desc: "Build → launch in simulator → screenshot → AI visual verification" },
+  { kw: "xtest",  alias: "xap test",  desc: "Run tests → analyze failures → fix loop (up to 5 iterations)" },
 ];
 ---
 
@@ -423,7 +429,7 @@ const keywords = [
       <!-- Tools -->
       <section id="tools">
         <div class="section-label">MCP Tools</div>
-        <h2>9 tools, one goal.</h2>
+        <h2>10 tools, one goal.</h2>
         <p class="section-sub">Every tool returns structured JSON — no parsing raw xcodebuild output.</p>
         <div class="tools-grid">
           {tools.map((t) => (
