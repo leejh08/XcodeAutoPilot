@@ -67,7 +67,7 @@ export type AutopilotScreenshotInput = z.infer<typeof autopilotScreenshotSchema>
 export interface ScreenshotResult {
   text: string;
   imageBase64: string;
-  mimeType: "image/png";
+  mimeType: "image/jpeg";
 }
 
 // ----------------------------------------------------------
@@ -120,6 +120,19 @@ function findAppInDir(productsDir: string): string {
     throw new Error(`No .app bundle found in: ${productsDir}`);
   }
   return apps[0];
+}
+
+// ----------------------------------------------------------
+// Optimize image: resize to max 800px wide + convert to JPEG
+// Reduces base64 size significantly for LLM token efficiency
+// ----------------------------------------------------------
+
+async function optimizeScreenshot(pngPath: string, jpegPath: string): Promise<void> {
+  // sips: resize to max 800px (maintains aspect ratio) + convert to JPEG
+  await execAsync(
+    `sips -Z 800 --setProperty format jpeg --setProperty formatOptions 85 "${pngPath}" --out "${jpegPath}"`,
+    { timeout: 10_000 }
+  );
 }
 
 // ----------------------------------------------------------
@@ -197,15 +210,23 @@ export async function handleAutopilotScreenshot(
   // ── Step 8: Take screenshot ─────────────────────────────
   await takeScreenshot(device.name, screenshotPath);
 
-  // ── Step 9: Open in Preview (non-blocking) ───────────────
-  if (input.open_preview !== false) {
-    execAsync(`open "${screenshotPath}"`).catch(() => {
-      // Non-critical — don't fail if open fails
-    });
+  // ── Step 9: Optimize image (resize + JPEG) ──────────────
+  const jpegPath = screenshotPath.replace(/\.png$/, ".jpg");
+  try {
+    await optimizeScreenshot(screenshotPath, jpegPath);
+    logger.info(`Screenshot optimized: ${jpegPath}`);
+  } catch {
+    logger.info("Image optimization failed, falling back to PNG");
   }
 
-  // ── Step 10: Read image as base64 ───────────────────────
-  const imageBase64 = readFileSync(screenshotPath).toString("base64");
+  // ── Step 10: Open in Preview (non-blocking) ───────────────
+  const previewPath = jpegPath;
+  if (input.open_preview !== false) {
+    execAsync(`open "${previewPath}"`).catch(() => {});
+  }
+
+  // ── Step 11: Read image as base64 ───────────────────────
+  const imageBase64 = readFileSync(jpegPath).toString("base64");
 
   const text = JSON.stringify(
     {
@@ -221,5 +242,5 @@ export async function handleAutopilotScreenshot(
     2
   );
 
-  return { text, imageBase64, mimeType: "image/png" };
+  return { text, imageBase64, mimeType: "image/jpeg" };
 }
