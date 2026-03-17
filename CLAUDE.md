@@ -29,7 +29,7 @@ hotfix/*  ──→ main + develop
 ## Workflow Rules
 
 ### Before every PR
-1. Test on `/Users/leejh/Desktop/XcodeAutoPilotTest` using MCP tools in Claude Code
+1. Test on `~/XcodeAutoPilotTest` using MCP tools in Claude Code
 2. Call `autopilot_build` → confirm errors detected with source context
 3. Generate fixes, call `autopilot_apply_fixes` → confirm fixes applied
 4. Call `autopilot_build` again → confirm 0 errors

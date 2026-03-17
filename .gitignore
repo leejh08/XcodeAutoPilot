@@ -10,4 +10,5 @@ dist/
 .claude/skills/
 site/node_modules/
 site/dist/
+site/.astro/
 linkedin-post.md
