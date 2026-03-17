@@ -127,6 +127,30 @@ const keywords = [
       .nav-links { display: flex; gap: 24px; font-size: 14px; color: var(--muted); }
       .nav-links a { color: var(--muted); }
       .nav-links a:hover { color: var(--text); text-decoration: none; }
+      .nav-links .nav-github {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text);
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .nav-links .nav-github svg {
+        width: 15px; height: 15px;
+        fill: var(--text);
+        flex-shrink: 0;
+      }
+      .nav-links .nav-github:hover {
+        background: rgba(255,255,255,0.1);
+        border-color: rgba(255,255,255,0.2);
+        color: var(--text);
+        text-decoration: none;
+      }
 
       /* ── Hero ── */
       .hero {
@@ -180,6 +204,40 @@ const keywords = [
         border: 1px solid var(--border);
       }
       .btn-ghost:hover { color: var(--text); }
+      .btn-github {
+        background: #f0f0f5;
+        color: #0c0c0f;
+        border: 1px solid rgba(255,255,255,0.15);
+        font-weight: 600;
+        position: relative;
+        overflow: hidden;
+        transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+      }
+      .btn-github svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        fill: #0c0c0f;
+        transition: fill 0.2s;
+      }
+      .btn-github:hover {
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(240,240,245,0.15), 0 4px 20px rgba(240,240,245,0.12);
+        transform: translateY(-1px);
+        text-decoration: none;
+        opacity: 1;
+      }
+      .btn-github::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
+        transform: translateX(-100%);
+        transition: transform 0.5s;
+      }
+      .btn-github:hover::after {
+        transform: translateX(100%);
+      }
 
       /* ── Loop diagram ── */
       .loop {
@@ -390,7 +448,10 @@ const keywords = [
           <a href="#tools">Tools</a>
           <a href="#xap">XAP</a>
           <a href="#quickstart">Quick Start</a>
-          <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank">GitHub ↗</a>
+          <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank" class="nav-github">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+            GitHub
+          </a>
         </div>
       </div>
     </nav>
@@ -406,7 +467,8 @@ const keywords = [
         </p>
         <div class="hero-actions">
           <a href="#quickstart" class="btn btn-primary">Get Started →</a>
-          <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank" class="btn btn-ghost">
+          <a href="https://github.com/leejh08/XcodeAutoPilot" target="_blank" class="btn btn-github">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
             View on GitHub
           </a>
         </div>
